@@ -14,18 +14,14 @@ const (
 //Server structure for the server
 type Server struct {
 	listeners    []net.Listener
+	conn         net.Conn
 	onConnection (func(net.Addr))
 }
 
 //NewServer Create a new Profinet server
 func NewServer() *Server {
 	s := new(Server)
-	go s.handler()
 	return s
-}
-
-func (s Server) handler() {
-
 }
 
 //Listen Listen profinet
@@ -41,8 +37,9 @@ func (s Server) Listen(IP string) error {
 	return err
 }
 func (s *Server) accept(listen net.Listener) error {
+	var err error
 	for {
-		conn, err := listen.Accept()
+		s.conn, err = listen.Accept()
 		log.Println("Active conection")
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
@@ -52,33 +49,57 @@ func (s *Server) accept(listen net.Listener) error {
 			return err
 		}
 		if s.onConnection != nil {
-			go s.onConnection(conn.RemoteAddr())
+			go s.onConnection(s.conn.RemoteAddr())
 		}
-		go func(conn net.Conn) {
-			defer conn.Close()
-
-			for {
-				packet := make([]byte, tcpMaxLength)
-				nbytes, err := conn.Read(packet)
-				if err != nil {
-					if err != io.EOF {
-						log.Printf("read error %v\n", err)
-					}
-					return
-				}
-				log.Println(packet[:nbytes])
-				packet[3] = 22   //isoHSize
-				packet[5] = 0xD0 // CC Connection confirm
-				if _, err = conn.Write(packet); err != nil {
-					return
-				}
-				println("send")
-			}
-		}(conn)
+		go s.handler()
 	}
 }
 
-//OnConnectionHandler Function that happend when there is a new conection
+func (s Server) handler() {
+	defer s.conn.Close()
+	packet := make([]byte, tcpMaxLength)
+	for {
+		//log.Println("Wait command")
+		nbytes, err := s.conn.Read(packet)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("Read error %v\n", err)
+			}
+			return
+		}
+		log.Println(packet[:nbytes])
+		if _, err = s.conn.Write(createbytes(packet)); err != nil {
+			log.Println("Error writing")
+			return
+		}
+		//log.Println("SEND PACKET")
+	}
+}
+
+//OnConnectionHandler Function that happend when there is a new nection
 func (s *Server) OnConnectionHandler(function func(net.Addr)) {
 	s.onConnection = function
+}
+func createbytes(r []byte) []byte {
+	out := []byte{3, 0, 0}
+	for i := 0; i < int(r[3]-3); i++ {
+		out = append(out, 0)
+	}
+	out[3] = r[3]
+	out[5] = 0xD0
+	if r[5] == 240 && r[11] != 5 {
+		out[3] = 27
+		out = append(out, 0, 0)
+		out[25] = 0
+		out[26] = 20
+		log.Println("Send negotation ack")
+	} else if r[11] == 5 {
+		out[21] = 0xFF
+		out[25] = 9
+		out[26] = 10
+		//log.Println("Send read")
+	} else {
+		log.Println("Send connection ack")
+	}
+	return out
 }
