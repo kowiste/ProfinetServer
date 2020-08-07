@@ -46,6 +46,10 @@ func (s *Server) accept(listen net.Listener) error {
 	var err error
 	for {
 		s.conn, err = listen.Accept() //Wait for a connection
+		if s.onConnection != nil {
+			go s.onConnection(s.conn.RemoteAddr())
+			log.Println("Connection Handler")
+		}
 		log.Println("Active conection")
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
@@ -64,8 +68,6 @@ func (s *Server) accept(listen net.Listener) error {
 func (s Server) handler() {
 	defer s.conn.Close()
 	for {
-		//log.Println("Wait command")
-		//nbytes, err := s.conn.Read(recv)
 		recv, err := s.readConn()
 		if err != nil {
 			if err != io.EOF {
@@ -73,42 +75,19 @@ func (s Server) handler() {
 			}
 			return
 		}
-		send, _ := getTelegram(recv) //createbytes(rcv)
+		send, _ := getTelegram(recv)
 
 		if _, err = s.conn.Write(send); err != nil {
 			log.Println("Error writing")
 			return
 		}
-		log.Println("SEND PACKET:  "+ fmt.Sprint(send))
+		log.Println("SEND PACKET:      " + fmt.Sprint(send))
 	}
 }
 
 //OnConnectionHandler Function that happend when there is a new nection
 func (s *Server) OnConnectionHandler(function func(net.Addr)) {
 	s.onConnection = function
-}
-func createbytes(r []byte) []byte {
-	out := []byte{3, 0, 0}
-	for i := 0; i < int(r[3]-3); i++ {
-		out = append(out, 0)
-	}
-	out[3] = r[3]
-	out[5] = 0xD0
-	if r[5] == 240 && r[11] != 5 {
-		out[3] = 27
-		out = append(out, 0, 0)
-		out[25] = 1
-		out[26] = 20
-		log.Println("Send negotation ack")
-	} else if r[11] == 5 {
-		out[21] = 0xFF
-		out[25] = 9
-		out[26] = 10
-		//log.Println("Send read")
-	} else {
-		log.Println("Send connection ack")
-	}
-	return out
 }
 
 func (s *Server) readConn() (response []byte, err error) {
