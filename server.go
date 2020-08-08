@@ -18,14 +18,36 @@ const (
 
 //Server structure for the server
 type Server struct {
-	listeners    []net.Listener
-	conn         net.Conn
-	onConnection (func(net.Addr))
+	listeners      []net.Listener
+	conn           net.Conn
+	State          bool
+	onConnection   (func(net.Addr)) //On Connection handler
+	onCounterRead  (func())         //On Read Counter handler
+	onTimerRead    (func())         //On Read Timer handler
+	onInputRead    (func())         //On Read Input handler
+	onOutputRead   (func())         //On Read Output handler
+	onMBRead       (func())         //On Read MB handler
+	onDBRead       (func())         //On Read DB handler
+	onMultiRead    (func())         //On Multi Read handler
+	onCounterWrite (func())         //On Write Counter handler
+	onTimerWrite   (func())         //On Write Timer handler
+	onInputWrite   (func())         //On Write Input handler
+	onOutputWrite  (func())         //On Write Output handler
+	onMBWrite      (func())         //On Write MB handler
+	onDBWrite      (func())         //On Write DB handler
+	onMultiWrite   (func())         //On Multi Write handler
+	input          []uint16
+	ouput          []uint16
+	marker         []byte
+	counter        []uint16
+	timer          []uint16
+	db             map[int][]uint16
 }
 
 //NewServer Create a new Profinet server
 func NewServer() *Server {
 	s := new(Server)
+	s.configureMemory()
 	return s
 }
 
@@ -40,6 +62,19 @@ func (s Server) Listen(IP string) error {
 	s.listeners = append(s.listeners, listen)
 	go s.accept(listen)
 	return err
+}
+
+func (s *Server) configureMemory() {
+	s.counter = make([]uint16, ^uint16(0))
+	s.db = make(map[int][]uint16)
+	for i := 1; i < 100; i++ {
+		s.db[i] = make([]uint16, ^uint16(0))
+	}
+	s.input = make([]uint16, ^uint16(0))
+	s.ouput = make([]uint16, ^uint16(0))
+	s.marker = make([]byte, ^byte(0))
+	s.counter = make([]uint16, ^uint16(0))
+	s.timer = make([]uint16, ^uint16(0))
 }
 
 func (s *Server) accept(listen net.Listener) error {
@@ -67,6 +102,7 @@ func (s *Server) accept(listen net.Listener) error {
 
 func (s Server) handler() {
 	defer s.conn.Close()
+	msg := NewTelegram()
 	for {
 		recv, err := s.readConn()
 		if err != nil {
@@ -75,7 +111,7 @@ func (s Server) handler() {
 			}
 			return
 		}
-		send, _ := getTelegram(recv)
+		send, _ := msg.getTelegram(recv)
 
 		if _, err = s.conn.Write(send); err != nil {
 			log.Println("Error writing")
@@ -83,11 +119,6 @@ func (s Server) handler() {
 		}
 		log.Println("SEND PACKET:      " + fmt.Sprint(send))
 	}
-}
-
-//OnConnectionHandler Function that happend when there is a new nection
-func (s *Server) OnConnectionHandler(function func(net.Addr)) {
-	s.onConnection = function
 }
 
 func (s *Server) readConn() (response []byte, err error) {
