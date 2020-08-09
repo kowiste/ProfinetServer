@@ -21,6 +21,11 @@ type Server struct {
 	listeners      []net.Listener
 	conn           net.Conn
 	State          bool
+	msgType        byte
+	command        byte
+	rwcomm         byte
+	PDUReference   uint16
+	reqDataLen     int
 	onConnection   (func(net.Addr)) //On Connection handler
 	onCounterRead  (func())         //On Read Counter handler
 	onTimerRead    (func())         //On Read Timer handler
@@ -42,6 +47,13 @@ type Server struct {
 	counter        []uint16
 	timer          []uint16
 	db             map[int][]uint16
+}
+
+//Address structure to save the address
+type Address struct {
+	DB     int
+	Memory int
+	Size   int
 }
 
 //NewServer Create a new Profinet server
@@ -102,7 +114,6 @@ func (s *Server) accept(listen net.Listener) error {
 
 func (s Server) handler() {
 	defer s.conn.Close()
-	msg := NewTelegram()
 	for {
 		recv, err := s.readConn()
 		if err != nil {
@@ -111,7 +122,7 @@ func (s Server) handler() {
 			}
 			return
 		}
-		send, _ := msg.getTelegram(recv)
+		send, _ := s.getTelegram(recv)
 
 		if _, err = s.conn.Write(send); err != nil {
 			log.Println("Error writing")
