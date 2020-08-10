@@ -36,7 +36,7 @@ func (s *Server) getTelegram(rq []byte) ([]byte, error) {
 	}
 
 	if s.command == WriteVariable { //command == WriteCounterReq || command == WriteTimerReq || command == WriteInputReq || command == WriteOutputReq || command == WriteMBReq || command == WriteDBReq || command == WriteMulti { //WRITE REQUEST
-		s.setVariable()
+		out = append(out, s.setVariable(rq)...)
 		out[3] = 22
 		return out, nil
 	}
@@ -200,14 +200,20 @@ func (s *Server) getVariable() []byte {
 	}
 	return out
 }
-func (s *Server) setVariable() []byte {
+func (s *Server) setVariable(rq []byte) []byte {
 	out := make([]byte, 0)
-	out = append(out, 0x12)      //b17			//Specification type fr const 18 for read/write
-	out = append(out, 0xFF)      //b18			// Lenght rest of byte
-	out = append(out, 22)        //b19			//Syntax ID const 16 fr any typ addr
+	out = append(out, 0x00)      //b17			//Specification type fr const 18 for read/write
+	out = append(out, 0x00)      //b18			// Lenght rest of byte
+	out = append(out, 22)        //b19			//Syntax ID const 16 for any typ addr
 	out = append(out, s.varType) //b20			//Variable type see table below
-	out = append(out, 0xFF)      //b21			//
-	out = append(out, 0x00)      //b22			//Count
+	out = append(out, 0x00)      //b21			//
+	out = append(out, 0x00, 0x00)
+	if s.setMemory(rq) {
+		out = append(out, 0xFF) //b22			ok write
+	} else {
+		out = append(out, 0x00) //b22			Bad write
+	}
+
 	return out
 }
 
@@ -217,4 +223,21 @@ func (s *Server) getMemory(mem []byte) (out []byte) {
 		out = append(out, mem[int(s.addressReq.Address*2)+element])
 	}
 	return
+}
+func (s *Server) setMemory(rq []byte) bool {
+
+
+	for addr := 0; addr < int(s.PDULenght); addr++ {
+		switch s.rwcomm {
+		case Input:
+			s.input[int(s.addressReq.Address)+addr]= rq[35+addr]
+		case Output:
+			s.output[int(s.addressReq.Address)+addr]= rq[35+addr]
+		case Marker:
+			s.marker[int(s.addressReq.Address)+addr]= rq[35+addr]
+		case DataBlock:
+			s.db[int(s.addressReq.DB)][int(s.addressReq.Address)+addr] = rq[35+addr]
+		}
+	}
+	return true
 }

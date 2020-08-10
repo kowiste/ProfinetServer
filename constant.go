@@ -12,9 +12,9 @@ const (
 	UserdataRequest byte = 0x07
 
 	//REQUEST CONSTANT
-	ConnectionReq = iota
-	GetCPUInfo
-	GetCPInfo
+	ConnectionReq byte = 0x54
+	GetCPUInfo byte = 0x55
+	GetCPInfo byte = 0x56
 
 	//MEMORY AREA CONSTANT
 	INFOs200                 byte = 0x03
