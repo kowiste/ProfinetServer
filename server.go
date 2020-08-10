@@ -57,7 +57,7 @@ type ServerHandler struct {
 //ServerMemory Memory of the server
 type ServerMemory struct {
 	input   []byte
-	ouput   []byte
+	output  []byte
 	marker  []byte
 	counter []byte
 	timer   []byte
@@ -102,8 +102,8 @@ func (s *Server) configureMemory() {
 		s.db[i] = make([]byte, ^uint16(0))
 	}
 	s.input = make([]byte, ^uint16(0))
-	s.ouput = make([]byte, ^uint16(0))
-	s.marker = make([]byte, ^byte(0))
+	s.output = make([]byte, ^uint16(0))
+	s.marker = make([]byte, ^uint16(0))
 	s.counter = make([]byte, ^uint16(0))
 	s.timer = make([]byte, ^uint16(0))
 }

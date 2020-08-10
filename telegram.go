@@ -188,12 +188,15 @@ func (s *Server) getVariable() []byte {
 	out = append(out, 0xFF)                                     //b21			//ErrorCode
 	out = append(out, s.varType)                                //b22 			//Variable type see table in constant
 	out = append(out, uint16ToByte(s.PDULenght)...)             //b23-24		//Count
-	if s.rwcomm == Output {
-		
-	}
-
-	for i := 0; i < int(s.PDULenght); i++ {
-		out = append(out, byte(i)) //data
+	switch s.rwcomm {
+	case Input:
+		out = append(out, s.getMemory(s.input)...)
+	case Output:
+		out = append(out, s.getMemory(s.output)...)
+	case Marker:
+		out = append(out, s.getMemory(s.marker)...)
+	case DataBlock:
+		out = append(out, s.getMemory(s.db[int(s.addressReq.DB)])...)
 	}
 	return out
 }
@@ -206,4 +209,12 @@ func (s *Server) setVariable() []byte {
 	out = append(out, 0xFF)      //b21			//
 	out = append(out, 0x00)      //b22			//Count
 	return out
+}
+
+func (s *Server) getMemory(mem []byte) (out []byte) {
+	out = make([]byte, 0)
+	for element := 0; element < int(s.PDULenght); element++ {
+		out = append(out, mem[int(s.addressReq.Address*2)+element])
+	}
+	return
 }

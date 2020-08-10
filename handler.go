@@ -4,8 +4,8 @@ import "net"
 
 //SetDB set DB data
 func (s *Server) SetDB(DBNum int, data []uint16) {
-	tempdata:=make([]byte)
-	s.db[DBNum] = data
+
+	s.db[DBNum] = arrUint16ToByte(data)
 }
 
 //SetMB set MB data
@@ -15,22 +15,22 @@ func (s *Server) SetMB(mark []byte) {
 
 //SetTimer set MB data
 func (s *Server) SetTimer(input []uint16) {
-	s.timer = input
+	s.timer = arrUint16ToByte(input)
 }
 
 //SetCounter set MB data
 func (s *Server) SetCounter(input []uint16) {
-	s.counter = input
+	s.counter = arrUint16ToByte(input)
 }
 
 //SetInput set input
 func (s *Server) SetInput(data []uint16) {
-	s.input = data
+	s.input = arrUint16ToByte(data)
 }
 
 //SetOutput set input
 func (s *Server) SetOutput(data []uint16) {
-	s.ouput = data
+	s.output = arrUint16ToByte(data)
 }
 
 //OnConnectionHandler Function that happend when there is a new nection
