@@ -18,14 +18,25 @@ const (
 
 //Server structure for the server
 type Server struct {
-	listeners      []net.Listener
-	conn           net.Conn
-	State          bool
-	msgType        byte
-	command        byte
-	rwcomm         byte
-	PDUReference   uint16
-	reqDataLen     int
+	listeners    []net.Listener
+	conn         net.Conn
+	State        bool
+	rack         uint16
+	slot         uint16
+	msgType      byte
+	varType      byte
+	command      byte
+	rwcomm       byte
+	PDUReference uint16
+	PDULenght    uint16 //Default 480 bytes
+	reqDataLen   int
+	addressReq   *Address
+	ServerHandler
+	ServerMemory
+}
+
+//ServerHandler handler for the server
+type ServerHandler struct {
 	onConnection   (func(net.Addr)) //On Connection handler
 	onCounterRead  (func())         //On Read Counter handler
 	onTimerRead    (func())         //On Read Timer handler
@@ -41,19 +52,23 @@ type Server struct {
 	onMBWrite      (func())         //On Write MB handler
 	onDBWrite      (func())         //On Write DB handler
 	onMultiWrite   (func())         //On Multi Write handler
-	input          []uint16
-	ouput          []uint16
-	marker         []byte
-	counter        []uint16
-	timer          []uint16
-	db             map[int][]uint16
+}
+
+//ServerMemory Memory of the server
+type ServerMemory struct {
+	input   []byte
+	ouput   []byte
+	marker  []byte
+	counter []byte
+	timer   []byte
+	db      map[int][]byte
 }
 
 //Address structure to save the address
 type Address struct {
-	DB     int
-	Memory int
-	Size   int
+	DB      uint16
+	Address uint32
+	Size    int
 }
 
 //NewServer Create a new Profinet server
@@ -64,29 +79,33 @@ func NewServer() *Server {
 }
 
 //Listen Listen profinet
-func (s Server) Listen(IP string) error {
+func (s Server) Listen(IP string, rack uint16, slot uint16) error {
 	listen, err := net.Listen("tcp", IP)
 	if err != nil {
 		log.Printf("Failed to Listen: %v\n", err)
 		return err
 	}
+	s.rack = rack
+	s.slot = slot
 	log.Println("Profinet Server Active on: ", IP)
+	log.Println("Rack: ", rack, " Slot: ", slot)
 	s.listeners = append(s.listeners, listen)
 	go s.accept(listen)
 	return err
 }
 
 func (s *Server) configureMemory() {
-	s.counter = make([]uint16, ^uint16(0))
-	s.db = make(map[int][]uint16)
+	s.addressReq = new(Address)
+	s.counter = make([]byte, ^uint16(0))
+	s.db = make(map[int][]byte)
 	for i := 1; i < 100; i++ {
-		s.db[i] = make([]uint16, ^uint16(0))
+		s.db[i] = make([]byte, ^uint16(0))
 	}
-	s.input = make([]uint16, ^uint16(0))
-	s.ouput = make([]uint16, ^uint16(0))
+	s.input = make([]byte, ^uint16(0))
+	s.ouput = make([]byte, ^uint16(0))
 	s.marker = make([]byte, ^byte(0))
-	s.counter = make([]uint16, ^uint16(0))
-	s.timer = make([]uint16, ^uint16(0))
+	s.counter = make([]byte, ^uint16(0))
+	s.timer = make([]byte, ^uint16(0))
 }
 
 func (s *Server) accept(listen net.Listener) error {

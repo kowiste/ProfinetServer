@@ -4,6 +4,7 @@ import "net"
 
 //SetDB set DB data
 func (s *Server) SetDB(DBNum int, data []uint16) {
+	tempdata:=make([]byte)
 	s.db[DBNum] = data
 }
 

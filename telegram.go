@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 func (s *Server) getTelegram(rq []byte) ([]byte, error) {
@@ -14,45 +15,28 @@ func (s *Server) getTelegram(rq []byte) ([]byte, error) {
 
 	if s.command == ConnectionReq { //ISO CONNECION REQUEST
 		log.Println("ISO REQUEST:      " + fmt.Sprint(rq))
-		//ISO-COTP
-		out = append(out, s.getISOCOPT()...)                           //b4-6// COPT for connection
-		out = append(out, make([]byte, int(s.reqDataLen-isoHSize))...) //Add the number of 0 necessary
+		out = append(out, s.handlerConnection(rq)...) //che
 		return out, nil
 	}
-	out = append(out, s.getISOCOPT()...)     //b4-6	//ISO-COTP
+
 	out = append(out, s.getS7PDUHeader()...) //S7PDU HEADER (10-12 bytes)
 
 	if s.command == SetupCommunication { //NEGOTIATIN REQUEST
-		log.Println("NEGOTIATION:      " + fmt.Sprint(rq)) //print
-		out[3] = 27                                        //packetlenght
-		out = append(out, make([]byte, 8)...)              //b17-24
-		out = append(out, rq[23], rq[24])                  //b25-26 //PDULenght
+		out[3] = 27                                     //packetlenght
+		out = append(out, make([]byte, 11)...)          //b17-24
+		out = append(out, uint16ToByte(s.PDULenght)...) //b25-26 //PDULenght
 		return out, nil
 	}
 
 	if s.command == ReadVariable { //command == ReadCounterReq || command == ReadTimerReq || command == ReadInputReq || command == ReadOutputReq || command == ReadMBReq || command == ReadDBReq || command == ReadMulti { //READ REQUET
-		data := binary.BigEndian.Uint16([]byte{rq[23], rq[24]})
-		out = append(out, 0x00)           //b17
-		out = append(out, 0x00)           //b18
-		out = append(out, 0x00, 0x00)     //b19-20
-		out = append(out, 0xFF)           //b21			//ErrorCode
-		out = append(out, rq[22])         //b22 		//Variabltype see table below
-		out = append(out, rq[23], rq[24]) //b23-24		//Count
-		for i := 0; i < int(data); i++ {
-			out = append(out, byte(i)) //data
-		}
+		out = append(out, s.getVariable()...)
 		out[20] = 1
-		out[3] = 25 + byte(data) //update packet lenght TODO both byte 2nd 3
+		out[3] = 25 + byte(s.PDULenght) //update packet lenght TODO both byte 2nd 3
 		return out, nil
 	}
 
 	if s.command == WriteVariable { //command == WriteCounterReq || command == WriteTimerReq || command == WriteInputReq || command == WriteOutputReq || command == WriteMBReq || command == WriteDBReq || command == WriteMulti { //WRITE REQUEST
-		out = append(out, 0x12)   //b17			//Specification type fr const 18 for read/write
-		out = append(out, 0xFF)   //b18			// Lenght rest of byte
-		out = append(out, 22)     //b19			//Syntax ID const 16 fr any typ addr
-		out = append(out, rq[22]) //b20			//Variable type see table below
-		out = append(out, 0xFF)   //b21			//
-		out = append(out, 0x00)   //b22			//Count
+		s.setVariable()
 		out[3] = 22
 		return out, nil
 	}
@@ -86,7 +70,7 @@ func (s *Server) getTPKHeader(rq []byte) (out []byte) {
 	//TPKT HEADER RFC 100
 	//b0-3		//pvrsn (always 3), Reserved,packet lenght [High,Low
 	s.reqDataLen = int(binary.BigEndian.Uint16([]byte{rq[2], rq[3]}))
-	out = append(out, ProtocolID, 0x00, rq[2], rq[3])
+	out = append(out, 0x03, 0x00, rq[2], rq[3])
 	return
 }
 func (s Server) getISOCOPT() (out []byte) {
@@ -110,10 +94,13 @@ func (s Server) getS7PDUHeader() (out []byte) {
 func (s *Server) getCommand(rq []byte) {
 	s.msgType = rq[8]
 	s.PDUReference = binary.BigEndian.Uint16([]byte{rq[11], rq[12]})
+
 	if rq[4] == 17 && rq[5] == 224 {
 		s.command = ConnectionReq
 	} else if s.msgType == JobRequest {
 		s.command = rq[17]
+		s.PDULenght = binary.BigEndian.Uint16([]byte{rq[23], rq[24]})
+		s.varType = rq[22]
 		s.selectedJob(rq)
 	} else if s.msgType == UserdataRequest {
 		if rq[30] == 28 { //GET CPU INFO
@@ -137,6 +124,8 @@ func (s *Server) getCommand(rq []byte) {
 func (s *Server) selectedJob(rq []byte) {
 	req := ""
 	switch s.command {
+	case SetupCommunication:
+		req = "NEGOTIATION:      "
 	case ReadVariable, WriteVariable:
 		if s.command == ReadVariable {
 			req = "READ "
@@ -144,6 +133,8 @@ func (s *Server) selectedJob(rq []byte) {
 			req = "WRITE "
 		}
 		s.rwcomm = rq[27]
+		s.addressReq.DB = binary.BigEndian.Uint16([]byte{rq[25], rq[26]})
+		s.addressReq.Address = (binary.BigEndian.Uint32([]byte{0x00, rq[28], rq[29], rq[30]})) >> 3
 		req += s.printRWArea()
 	case PLCStop:
 		req = "PLC STOP REQUEST: "
@@ -174,4 +165,45 @@ func (s *Server) printRWArea() (area string) {
 		area = "UNKNOWN      "
 	}
 	return
+}
+func (s *Server) handlerConnection(rq []byte) []byte {
+
+	DstTSAP := binary.BigEndian.Uint16([]byte{rq[20], rq[21]}) // Dst TSAP
+	dstslot := DstTSAP & 0x001F                                //getting slot
+	dstrack := ((DstTSAP >> 5) - 8) & 0x001F                   //getting rack
+	log.Println("slot ", strconv.Itoa(int(dstslot)))
+	log.Println("rack ", strconv.Itoa(int(dstrack)))
+	out := make([]byte, 0)
+	out = append(out, s.getISOCOPT()...)
+	if s.rack != dstrack || s.slot != dstslot {
+		out[1] = 0x00
+	}
+	out = append(out, make([]byte, int(s.reqDataLen-isoHSize))...)
+	return out
+}
+
+func (s *Server) getVariable() []byte {
+	out := make([]byte, 0)
+	out = append(out, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00) //b17
+	out = append(out, 0xFF)                                     //b21			//ErrorCode
+	out = append(out, s.varType)                                //b22 			//Variable type see table in constant
+	out = append(out, uint16ToByte(s.PDULenght)...)             //b23-24		//Count
+	if s.rwcomm == Output {
+		
+	}
+
+	for i := 0; i < int(s.PDULenght); i++ {
+		out = append(out, byte(i)) //data
+	}
+	return out
+}
+func (s *Server) setVariable() []byte {
+	out := make([]byte, 0)
+	out = append(out, 0x12)      //b17			//Specification type fr const 18 for read/write
+	out = append(out, 0xFF)      //b18			// Lenght rest of byte
+	out = append(out, 22)        //b19			//Syntax ID const 16 fr any typ addr
+	out = append(out, s.varType) //b20			//Variable type see table below
+	out = append(out, 0xFF)      //b21			//
+	out = append(out, 0x00)      //b22			//Count
+	return out
 }
