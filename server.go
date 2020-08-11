@@ -37,21 +37,22 @@ type Server struct {
 
 //ServerHandler handler for the server
 type ServerHandler struct {
-	onConnection   (func(net.Addr)) //On Connection handler
-	onCounterRead  (func())         //On Read Counter handler
-	onTimerRead    (func())         //On Read Timer handler
-	onInputRead    (func())         //On Read Input handler
-	onOutputRead   (func())         //On Read Output handler
-	onMBRead       (func())         //On Read MB handler
-	onDBRead       (func())         //On Read DB handler
-	onMultiRead    (func())         //On Multi Read handler
-	onCounterWrite (func())         //On Write Counter handler
-	onTimerWrite   (func())         //On Write Timer handler
-	onInputWrite   (func())         //On Write Input handler
-	onOutputWrite  (func())         //On Write Output handler
-	onMBWrite      (func())         //On Write MB handler
-	onDBWrite      (func())         //On Write DB handler
-	onMultiWrite   (func())         //On Multi Write handler
+	onConnection   (func(net.Addr))                //On Connection handler
+	onCounterRead  (func())                        //On Read Counter handler
+	onTimerRead    (func())                        //On Read Timer handler
+	onInputRead    (func())                        //On Read Input handler
+	onOutputRead   (func())                        //On Read Output handler
+	onMBRead       (func())                        //On Read MB handler
+	onDBRead       (func(*Server) ([]byte, error)) //On Read DB handler
+	onMultiRead    (func())                        //On Multi Read handler
+	onCounterWrite (func())                        //On Write Counter handler
+	onTimerWrite   (func())                        //On Write Timer handler
+	onInputWrite   (func())                        //On Write Input handler
+	onOutputWrite  (func())                        //On Write Output handler
+	onMBWrite      (func())                        //On Write MB handler
+	onDBWrite      (func())                        //On Write DB handler
+	onMultiWrite   (func())                        //On Multi Write handler
+	onTimer        (func(*Server))                 //On time handler
 }
 
 //ServerMemory Memory of the server

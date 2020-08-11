@@ -1,6 +1,9 @@
 package profinet
 
-import "net"
+import (
+	"net"
+	"time"
+)
 
 //SetDB set DB data
 func (s *Server) SetDB(DBNum int, data []uint16) {
@@ -64,7 +67,7 @@ func (s *Server) OnMBReadHandler(function func()) {
 }
 
 //OnDBReadHandler Function that happend when read a DB
-func (s *Server) OnDBReadHandler(function func()) {
+func (s *Server) OnDBReadHandler(function func(*Server) ([]byte, error)) {
 	s.onDBRead = function
 }
 
@@ -106,4 +109,17 @@ func (s *Server) OnDBWriteHandler(function func()) {
 //OnMultiWriteHandler Function that happend when multi rite
 func (s *Server) OnMultiWriteHandler(function func()) {
 	s.onMultiWrite = function
+}
+
+//OnTimerHandler Function that happend when the interval occure
+func (s *Server) OnTimerHandler(function func(*Server), tick time.Duration) {
+	s.onTimer = function
+	go s.timing(tick)
+}
+func (s *Server) timing(tick time.Duration) {
+	t := time.NewTicker(tick)
+	for {
+		<-t.C //Wait for the time
+		s.onTimer(s)
+	}
 }
