@@ -225,18 +225,17 @@ func (s *Server) getMemory(mem []byte) (out []byte) {
 	return
 }
 func (s *Server) setMemory(rq []byte) bool {
-
-
+	storeAddr := int(s.addressReq.Address * 2)
 	for addr := 0; addr < int(s.PDULenght); addr++ {
 		switch s.rwcomm {
 		case Input:
-			s.input[int(s.addressReq.Address)+addr]= rq[35+addr]
+			s.input[storeAddr+addr] = rq[35+addr]
 		case Output:
-			s.output[int(s.addressReq.Address)+addr]= rq[35+addr]
+			s.output[storeAddr+addr] = rq[35+addr]
 		case Marker:
-			s.marker[int(s.addressReq.Address)+addr]= rq[35+addr]
+			s.marker[storeAddr+addr] = rq[35+addr]
 		case DataBlock:
-			s.db[int(s.addressReq.DB)][int(s.addressReq.Address)+addr] = rq[35+addr]
+			s.db[int(s.addressReq.DB)][storeAddr+addr] = rq[35+addr]
 		}
 	}
 	return true
