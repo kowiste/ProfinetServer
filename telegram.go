@@ -194,9 +194,20 @@ func (s *Server) getVariable() []byte {
 	case Output:
 		out = append(out, s.getMemory(s.output)...)
 	case Marker:
-		out = append(out, s.getMemory(s.marker)...)
+		if s.onMBRead != nil {
+			outEvent, _ := s.onMBRead(s)
+			out = append(out, outEvent...)
+		} else {
+			out = append(out, s.getMemory(s.marker)...)
+		}
 	case DataBlock:
-		out = append(out, s.getMemory(s.db[int(s.addressReq.DB)])...)
+		if s.onDBRead != nil {
+			outEvent, _ := s.onDBRead(s)
+			out = append(out, outEvent...)
+		} else {
+			out = append(out, s.getMemory(s.db[int(s.addressReq.DB)])...)
+		}
+
 	}
 	return out
 }

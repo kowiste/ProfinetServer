@@ -38,11 +38,11 @@ type Server struct {
 //ServerHandler handler for the server
 type ServerHandler struct {
 	onConnection   (func(net.Addr))                //On Connection handler
-	onCounterRead  (func())                        //On Read Counter handler
-	onTimerRead    (func())                        //On Read Timer handler
-	onInputRead    (func())                        //On Read Input handler
-	onOutputRead   (func())                        //On Read Output handler
-	onMBRead       (func())                        //On Read MB handler
+	onCounterRead  (func(*Server) ([]byte, error)) //On Read Counter handler
+	onTimerRead    (func(*Server) ([]byte, error)) //On Read Timer handler
+	onInputRead    (func(*Server) ([]byte, error)) //On Read Input handler
+	onOutputRead   (func(*Server) ([]byte, error)) //On Read Output handler
+	onMBRead       (func(*Server) ([]byte, error)) //On Read MB handler
 	onDBRead       (func(*Server) ([]byte, error)) //On Read DB handler
 	onMultiRead    (func())                        //On Multi Read handler
 	onCounterWrite (func())                        //On Write Counter handler

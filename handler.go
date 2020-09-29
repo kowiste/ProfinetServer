@@ -42,27 +42,27 @@ func (s *Server) OnConnectionHandler(function func(net.Addr)) {
 }
 
 //OnCounterReadHandler Function that happend when read a counter
-func (s *Server) OnCounterReadHandler(function func()) {
+func (s *Server) OnCounterReadHandler(function func(*Server) ([]byte, error)) {
 	s.onCounterRead = function
 }
 
 //OnTimerReadHandler Function that happend when read a timer
-func (s *Server) OnTimerReadHandler(function func()) {
+func (s *Server) OnTimerReadHandler(function func(*Server) ([]byte, error)) {
 	s.onTimerRead = function
 }
 
 //OnInputReadHandler Function that happend when read a input
-func (s *Server) OnInputReadHandler(function func()) {
+func (s *Server) OnInputReadHandler(function func(*Server) ([]byte, error)) {
 	s.onTimerRead = function
 }
 
 //OnOutputReadHandler Function that happend when read a output
-func (s *Server) OnOutputReadHandler(function func()) {
+func (s *Server) OnOutputReadHandler(function func(*Server) ([]byte, error)) {
 	s.onOutputRead = function
 }
 
 //OnMBReadHandler Function that happend when read a MB
-func (s *Server) OnMBReadHandler(function func()) {
+func (s *Server) OnMBReadHandler(function func(*Server) ([]byte, error)) {
 	s.onMBRead = function
 }
 

@@ -11,7 +11,7 @@ import (
 
 func main() {
 	//Testing the connection
-	handler := gos7.NewTCPClientHandler("127.0.0.1", 0, 0)
+	handler := gos7.NewTCPClientHandler("127.0.0.1", 0, 1)
 	handler.Timeout = 5 * time.Millisecond
 	handler.IdleTimeout = 500 * time.Millisecond
 	handler.Logger = log.New(os.Stdout, "tcp: ", log.LstdFlags)
