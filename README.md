@@ -1,4 +1,4 @@
-# ProfinetServer
+# ProfinetServer PLC Simulator Siemens
 
 This program simulate a Profinet connection, I create it to test with a program that use the gos7 library https://github.com/robinson/gos7.
 On cmd/client there is a small example of client connect to this server, try cmd/runserver.go and later uncomment the line 15 to see how he value is overwrite.
