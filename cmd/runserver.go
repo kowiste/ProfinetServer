@@ -16,7 +16,7 @@ func main() {
 	server.OnTimerHandler(handlerTimer, 1*time.Second)
 	server.Listen("0.0.0.0:102", 0, 1)
 	for {
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
